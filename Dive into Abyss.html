@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Abyss - Where the light ends beneath the surface</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,340..600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --surface-top:#8FD9F0;
+    --surface-bot:#1E7DAE;
+    --twilight-top:#155C8C;
+    --twilight-bot:#0D3A5C;
+    --midnight-top:#0A2340;
+    --midnight-bot:#040E1E;
+    --abyss-top:#050B16;
+    --abyss-bot:#01040A;
+    --hadal:#000103;
+    --glow:#7BF3DD;
+    --glow-warm:#FFDA85;
+    --foam:#EAF7FB;
+    --ink:#F4FAFC;
+    --ink-muted:rgba(244,250,252,0.68);
+    --serif: 'Fraunces', serif;
+    --sans: 'Inter', sans-serif;
+    --mono: 'IBM Plex Mono', monospace;
+  }
+
+  *{ box-sizing:border-box; }
+  html{ scroll-behavior:smooth; }
+  body{
+    margin:0;
+    background:var(--hadal);
+    color:var(--ink);
+    font-family:var(--sans);
+    overflow-x:hidden;
+  }
+
+  ::selection{ background:var(--glow); color:#012; }
+
+  /* ---------- HUD ---------- */
+  .hud{
+    position:fixed;
+    top:0; right:0; bottom:0;
+    width:min(22vw, 220px);
+    display:flex;
+    flex-direction:column;
+    align-items:flex-end;
+    justify-content:flex-end;
+    padding:0 clamp(16px, 3vw, 36px) clamp(24px, 4vh, 48px) 0;
+    pointer-events:none;
+    z-index:50;
+    text-align:right;
+  }
+  .hud__zone{
+    font-family:var(--sans);
+    font-size:0.72rem;
+    letter-spacing:0.02em;
+    color:var(--ink-muted);
+    margin:0 0 2px;
+    transition:color .4s ease;
+  }
+  .hud__depth{
+    font-family:var(--mono);
+    font-size:clamp(1.1rem, 2vw, 1.5rem);
+    font-weight:500;
+    color:var(--glow);
+    margin:0 0 14px;
+    font-variant-numeric:tabular-nums;
+    text-shadow:0 0 12px rgba(123,243,221,0.45);
+  }
+  .hud__rail{
+    position:relative;
+    width:2px;
+    height:min(38vh, 320px);
+    background:rgba(244,250,252,0.18);
+    border-radius:2px;
+  }
+  .hud__marker{
+    position:absolute;
+    left:50%;
+    top:0;
+    width:8px; height:8px;
+    background:var(--glow);
+    border-radius:50%;
+    transform:translate(-50%,-50%);
+    box-shadow:0 0 10px 2px rgba(123,243,221,0.7);
+    transition:top .1s linear;
+  }
+
+  .resurface{
+    position:fixed;
+    left:clamp(16px,3vw,36px);
+    bottom:clamp(20px,4vh,40px);
+    z-index:50;
+    font-family:var(--sans);
+    font-size:0.85rem;
+    color:var(--ink);
+    background:rgba(244,250,252,0.08);
+    border:1px solid rgba(244,250,252,0.28);
+    padding:10px 18px;
+    border-radius:999px;
+    text-decoration:none;
+    backdrop-filter:blur(6px);
+    opacity:0;
+    transform:translateY(8px);
+    transition:opacity .5s ease, transform .5s ease, background .3s ease;
+  }
+  .resurface.is-visible{ opacity:1; transform:translateY(0); }
+  .resurface:hover{ background:rgba(244,250,252,0.16); }
+
+  /* ---------- Zones ---------- */
+  .zone{
+    position:relative;
+    min-height:140vh;
+    overflow:hidden;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .zone--hero{ min-height:150vh; }
+  .zone--hadal{ min-height:170vh; }
+
+  .zone--surface{ background:linear-gradient(180deg, var(--surface-top), var(--surface-bot)); }
+  .zone--twilight{ background:linear-gradient(180deg, var(--twilight-top), var(--twilight-bot)); }
+  .zone--midnight{ background:linear-gradient(180deg, var(--midnight-top), var(--midnight-bot)); }
+  .zone--abyss{ background:linear-gradient(180deg, var(--abyss-top), var(--abyss-bot)); }
+  .zone--hadal{ background:linear-gradient(180deg, var(--abyss-bot), var(--hadal)); }
+
+  .layer{
+    position:absolute;
+    left:0;
+    width:100%;
+    top:-18%;
+    height:136%;
+    will-change:transform;
+    pointer-events:none;
+  }
+
+  .content{
+    position:relative;
+    z-index:5;
+    max-width:640px;
+    padding:0 24px;
+    text-align:center;
+  }
+  .content .range{
+    display:block;
+    font-family:var(--mono);
+    font-size:0.75rem;
+    color:var(--ink-muted);
+    letter-spacing:0.04em;
+    margin-bottom:14px;
+  }
+  .content h2{
+    font-family:var(--serif);
+    font-weight:480;
+    font-size:clamp(2.1rem, 5vw, 3.6rem);
+    line-height:1.08;
+    margin:0 0 18px;
+  }
+  .content p{
+    font-family:var(--sans);
+    font-size:clamp(1rem, 1.3vw, 1.125rem);
+    line-height:1.6;
+    color:var(--ink-muted);
+    margin:0 auto;
+    max-width:52ch;
+  }
+  .zone--surface .content h2{ color:#06283D; }
+  .zone--surface .content .range,
+  .zone--surface .content p{ color:rgba(6,40,61,0.72); }
+
+  /* ---------- Surface elements ---------- */
+  .sun{
+    position:absolute;
+    top:14%; left:50%;
+    width:min(30vw, 260px); height:min(30vw,260px);
+    transform:translateX(-50%);
+    border-radius:50%;
+    background:radial-gradient(circle at 40% 35%, #FFF6D8, var(--glow-warm) 55%, rgba(255,218,133,0) 72%);
+    filter:blur(0.5px);
+  }
+  .rays{
+    position:absolute;
+    top:0; left:0; width:100%; height:100%;
+    background:conic-gradient(from 0deg at 50% 20%,
+      rgba(255,246,216,0.16) 0deg, rgba(255,246,216,0) 12deg,
+      rgba(255,246,216,0.16) 24deg, rgba(255,246,216,0) 36deg,
+      rgba(255,246,216,0.16) 48deg, rgba(255,246,216,0) 60deg,
+      rgba(255,246,216,0.16) 72deg, rgba(255,246,216,0) 84deg,
+      rgba(255,246,216,0.16) 96deg, rgba(255,246,216,0) 108deg,
+      rgba(255,246,216,0.16) 120deg, rgba(255,246,216,0) 132deg,
+      rgba(255,246,216,0.16) 144deg, rgba(255,246,216,0) 156deg,
+      rgba(255,246,216,0.16) 168deg, rgba(255,246,216,0) 180deg,
+      rgba(255,246,216,0.16) 192deg, rgba(255,246,216,0) 204deg,
+      rgba(255,246,216,0.16) 216deg, rgba(255,246,216,0) 228deg,
+      rgba(255,246,216,0.16) 240deg, rgba(255,246,216,0) 252deg,
+      rgba(255,246,216,0.16) 264deg, rgba(255,246,216,0) 276deg,
+      rgba(255,246,216,0.16) 288deg, rgba(255,246,216,0) 300deg,
+      rgba(255,246,216,0.16) 312deg, rgba(255,246,216,0) 324deg,
+      rgba(255,246,216,0.16) 336deg, rgba(255,246,216,0) 348deg);
+    opacity:0.5;
+  }
+  .gulls{ position:absolute; top:8%; left:0; width:100%; height:20%; }
+  .gull{ position:absolute; width:26px; height:12px; }
+  .gull::before,.gull::after{
+    content:''; position:absolute; top:0; width:15px; height:15px;
+    border-top:2px solid rgba(6,40,61,0.45);
+    border-radius:50%;
+  }
+  .gull::before{ left:0; transform:rotate(20deg); }
+  .gull::after{ right:0; transform:rotate(-20deg) scaleX(-1); }
+
+  .wave-svg{ position:absolute; width:100%; left:0; }
+  .wave-back{ bottom:22%; opacity:0.55; }
+  .wave-front{ bottom:0; }
+
+  /* ---------- Twilight: jellyfish ---------- */
+  .jelly{ position:absolute; width:70px; height:80px; }
+  .jelly__bell{
+    width:100%; height:60%;
+    background:radial-gradient(circle at 35% 25%, rgba(180,240,255,0.55), rgba(123,243,221,0.22) 70%, rgba(123,243,221,0.05));
+    border-radius:50% 50% 46% 46% / 60% 60% 40% 40%;
+    box-shadow:0 0 22px rgba(123,243,221,0.25);
+    animation:pulse 4.5s ease-in-out infinite;
+  }
+  .jelly__tentacles{ position:relative; height:40%; }
+  .jelly__tentacles i{
+    position:absolute; top:0; width:1.5px; height:100%;
+    background:linear-gradient(180deg, rgba(123,243,221,0.5), rgba(123,243,221,0));
+    transform-origin:top center;
+    animation:sway 3.6s ease-in-out infinite;
+  }
+  @keyframes pulse{ 0%,100%{ transform:scaleY(1); } 50%{ transform:scaleY(0.86); } }
+  @keyframes sway{ 0%,100%{ transform:rotate(-6deg); } 50%{ transform:rotate(6deg); } }
+
+  .shaft{
+    position:absolute; top:-10%; width:120px; height:120%;
+    background:linear-gradient(180deg, rgba(180,230,255,0.14), rgba(180,230,255,0));
+    transform:skewX(-8deg);
+  }
+
+  /* ---------- Midnight: bioluminescence ---------- */
+  .spark{
+    position:absolute;
+    width:3px; height:3px;
+    background:var(--glow);
+    border-radius:50%;
+    box-shadow:0 0 6px 2px rgba(123,243,221,0.8);
+    animation:twinkle 3.2s ease-in-out infinite;
+  }
+  @keyframes twinkle{ 0%,100%{ opacity:0.15; } 50%{ opacity:0.95; } }
+
+  .angler{ position:absolute; width:130px; }
+
+  /* ---------- Hadal trench ---------- */
+  .trench-wall{
+    position:absolute; top:0; height:100%; width:56%;
+    background:linear-gradient(180deg, rgba(0,1,3,0), rgba(0,1,3,0.9));
+  }
+  .trench-wall--left{ left:-10%; clip-path:polygon(0 0,100% 0,42% 100%,0 100%); background-color:#020306; }
+  .trench-wall--right{ right:-10%; clip-path:polygon(0 0,100% 0,100% 100%,58% 100%); background-color:#020306; }
+  .trench-glow{
+    position:absolute; left:50%; bottom:10%; width:10px; height:10px;
+    transform:translateX(-50%);
+    background:var(--glow);
+    border-radius:50%;
+    box-shadow:0 0 30px 10px rgba(123,243,221,0.55);
+    animation:twinkle 4s ease-in-out infinite;
+  }
+
+  .finale{ position:relative; z-index:5; text-align:center; max-width:600px; padding:0 24px; }
+  .finale h2{ font-family:var(--serif); font-weight:440; font-size:clamp(1.8rem,4vw,2.6rem); margin:0 0 16px; }
+  .finale p{ color:var(--ink-muted); line-height:1.6; margin:0 0 28px; }
+  .finale a{
+    display:inline-block;
+    font-family:var(--sans); font-size:0.9rem;
+    color:var(--hadal);
+    background:var(--glow);
+    padding:12px 26px;
+    border-radius:999px;
+    text-decoration:none;
+    box-shadow:0 0 24px rgba(123,243,221,0.35);
+  }
+
+  footer{
+    text-align:center;
+    padding:40px 20px;
+    font-size:0.78rem;
+    color:var(--ink-muted);
+    background:var(--hadal);
+  }
+
+  @media (max-width:640px){
+    .hud{ width:auto; padding-right:14px; }
+    .hud__rail{ height:22vh; }
+  }
+
+  @media (prefers-reduced-motion:reduce){
+    .layer{ transform:none !important; }
+    html{ scroll-behavior:auto; }
+    .jelly__bell, .jelly__tentacles i, .spark, .trench-glow{ animation:none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="hud" aria-hidden="true">
+  <p class="hud__zone" id="hudZone">Sunlight Zone</p>
+  <p class="hud__depth" id="hudDepth">0 m</p>
+  <div class="hud__rail"><div class="hud__marker" id="hudMarker"></div></div>
+</div>
+
+<a href="#top" class="resurface" id="resurfaceBtn">↑ Resurface</a>
+
+<main id="top">
+
+  <!-- SURFACE -->
+  <section class="zone zone--hero zone--surface" data-depth-min="0" data-depth-max="200">
+    <div class="layer" data-speed="0.15"><div class="sun"></div></div>
+    <div class="layer" data-speed="0.25"><div class="rays"></div></div>
+    <div class="layer gulls" data-speed="0.35">
+      <div class="gull" style="left:20%;"></div>
+      <div class="gull" style="left:55%; top:40%; transform:scale(0.7);"></div>
+      <div class="gull" style="left:75%; top:10%; transform:scale(0.85);"></div>
+    </div>
+    <div class="layer" data-speed="0.5">
+      <svg class="wave-svg wave-back" viewBox="0 0 1440 200" preserveAspectRatio="none" height="160">
+        <path d="M0,80 C240,140 480,20 720,80 C960,140 1200,20 1440,80 L1440,200 L0,200 Z" fill="#EAF7FB" opacity="0.5"/>
+      </svg>
+    </div>
+    <div class="content">
+      <span class="range">0 – 200 m · Sunlight Zone</span>
+      <h2>The ocean begins where the sky ends.</h2>
+      <p>Sunlight reaches this far and no further. Nearly every wave you've ever seen breaks here, in the thin, bright skin of a much deeper world.</p>
+    </div>
+    <div class="layer" data-speed="0.85">
+      <svg class="wave-svg wave-front" viewBox="0 0 1440 220" preserveAspectRatio="none" height="200">
+        <path d="M0,100 C220,40 460,160 720,100 C980,40 1220,160 1440,100 L1440,220 L0,220 Z" fill="#EAF7FB"/>
+      </svg>
+    </div>
+  </section>
+
+  <!-- TWILIGHT -->
+  <section class="zone zone--twilight" data-depth-min="200" data-depth-max="1000">
+    <div class="layer" data-speed="0.2">
+      <div class="shaft" style="left:15%;"></div>
+      <div class="shaft" style="left:60%; width:90px;"></div>
+    </div>
+    <div class="layer" data-speed="0.45" id="jellyLayerBack"></div>
+    <div class="content">
+      <span class="range">200 – 1,000 m · Twilight Zone</span>
+      <h2>Light fades to a memory here.</h2>
+      <p>Only a blue haze survives this deep, too faint for anything to grow by. Many creatures rise toward the surface each night and sink back before dawn.</p>
+    </div>
+    <div class="layer" data-speed="1.15" id="jellyLayerFront"></div>
+  </section>
+
+  <!-- MIDNIGHT -->
+  <section class="zone zone--midnight" data-depth-min="1000" data-depth-max="4000">
+    <div class="layer" data-speed="0.3" id="sparksBack"></div>
+    <div class="content">
+      <span class="range">1,000 – 4,000 m · Midnight Zone</span>
+      <h2>Past this line, the sun has never once mattered.</h2>
+      <p>In total darkness, most animals make their own light — a flash to startle, a lure to tempt, a glow to say <em>not prey, not food, not you.</em></p>
+    </div>
+    <div class="layer" data-speed="1.2" id="sparksFront">
+      <svg class="angler" style="left:12%; top:60%;" viewBox="0 0 200 120" fill="none">
+        <path d="M10 70 C10 40 50 20 90 25 C130 30 150 55 150 70 C150 90 120 100 85 98 C50 96 10 95 10 70 Z" fill="#040E1E" stroke="rgba(123,243,221,0.25)" stroke-width="1"/>
+        <path d="M60 24 C70 5 95 0 95 0" stroke="rgba(123,243,221,0.5)" stroke-width="1.5" fill="none"/>
+        <circle cx="95" cy="1" r="3" fill="#7BF3DD" style="filter:drop-shadow(0 0 6px #7BF3DD)"/>
+      </svg>
+    </div>
+  </section>
+
+  <!-- ABYSS -->
+  <section class="zone zone--abyss" data-depth-min="4000" data-depth-max="6000">
+    <div class="layer" data-speed="0.35" id="sparksAbyssBack"></div>
+    <div class="content">
+      <span class="range">4,000 – 6,000 m · Abyssal Zone</span>
+      <h2>Three quarters of the seafloor lies down here.</h2>
+      <p>Near freezing, crushed under hundreds of atmospheres, this is the ocean's quiet majority — flat plains of sediment settled over millions of years.</p>
+    </div>
+    <div class="layer" data-speed="1.1" id="sparksAbyssFront"></div>
+  </section>
+
+  <!-- HADAL -->
+  <section class="zone zone--hadal" data-depth-min="6000" data-depth-max="10935">
+    <div class="layer" data-speed="0.4">
+      <div class="trench-wall trench-wall--left"></div>
+      <div class="trench-wall trench-wall--right"></div>
+    </div>
+    <div class="layer" data-speed="0.8" id="sparksHadal"></div>
+    <div class="finale">
+      <span class="range">6,000 – 10,935 m · Hadal Zone</span>
+      <h2>You've reached the Challenger Deep.</h2>
+      <p>Deeper than Everest is tall, this trench has been visited by fewer people than the surface of the moon. There is nowhere further down to go.</p>
+      <a href="#top">Return to the surface</a>
+    </div>
+    <div class="layer" data-speed="1.0"><div class="trench-glow"></div></div>
+  </section>
+
+</main>
+
+<footer>A short dive through the five ocean zones — scroll to descend, or resurface above.</footer>
+
+<script>
+(function(){
+  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Populate jellyfish
+  function makeJelly(top,left,scale,opacity){
+    var wrap=document.createElement('div');
+    wrap.className='jelly';
+    wrap.style.top=top; wrap.style.left=left;
+    wrap.style.transform='scale('+scale+')';
+    wrap.style.opacity=opacity;
+    var bell=document.createElement('div'); bell.className='jelly__bell';
+    var tent=document.createElement('div'); tent.className='jelly__tentacles';
+    for(var i=0;i<6;i++){
+      var t=document.createElement('i');
+      t.style.left=(10+i*11)+'%';
+      t.style.animationDelay=(i*0.3)+'s';
+      tent.appendChild(t);
+    }
+    wrap.appendChild(bell); wrap.appendChild(tent);
+    return wrap;
+  }
+  var jb=document.getElementById('jellyLayerBack');
+  jb.appendChild(makeJelly('20%','15%',1.3,0.5));
+  jb.appendChild(makeJelly('55%','75%',1.6,0.4));
+  jb.appendChild(makeJelly('75%','40%',1.1,0.45));
+
+  var jf=document.getElementById('jellyLayerFront');
+  jf.appendChild(makeJelly('35%','60%',2.1,0.85));
+  jf.appendChild(makeJelly('68%','20%',1.7,0.8));
+
+  // Populate bioluminescent sparks
+  function makeSparks(container,count){
+    for(var i=0;i<count;i++){
+      var s=document.createElement('div');
+      s.className='spark';
+      s.style.top=(Math.random()*100)+'%';
+      s.style.left=(Math.random()*100)+'%';
+      s.style.animationDelay=(Math.random()*3)+'s';
+      s.style.opacity=(0.4+Math.random()*0.6);
+      container.appendChild(s);
+    }
+  }
+  makeSparks(document.getElementById('sparksBack'),18);
+  makeSparks(document.getElementById('sparksFront'),14);
+  makeSparks(document.getElementById('sparksAbyssBack'),10);
+  makeSparks(document.getElementById('sparksAbyssFront'),8);
+  makeSparks(document.getElementById('sparksHadal'),6);
+
+  // Parallax layers: cache each layer's section offset
+  var layers = Array.prototype.slice.call(document.querySelectorAll('.layer'));
+  var sections = Array.prototype.slice.call(document.querySelectorAll('.zone'));
+
+  function cacheOffsets(){
+    layers.forEach(function(l){
+      var section = l.closest('.zone');
+      var rect = section.getBoundingClientRect();
+      l._sectionTop = rect.top + window.scrollY;
+    });
+  }
+  cacheOffsets();
+  window.addEventListener('resize', cacheOffsets);
+
+  var hudZone = document.getElementById('hudZone');
+  var hudDepth = document.getElementById('hudDepth');
+  var hudMarker = document.getElementById('hudMarker');
+  var railHeight = document.querySelector('.hud__rail').offsetHeight;
+  var resurfaceBtn = document.getElementById('resurfaceBtn');
+
+  var docHeight = document.documentElement.scrollHeight - window.innerHeight;
+
+  function update(){
+    var scrollY = window.scrollY;
+
+    if(!reduceMotion){
+      layers.forEach(function(l){
+        var speed = parseFloat(l.getAttribute('data-speed'));
+        var offset = (scrollY - l._sectionTop) * (1 - speed);
+        l.style.transform = 'translateY(' + offset.toFixed(1) + 'px)';
+      });
+    }
+
+    // Determine active section (closest to viewport center)
+    var centerY = scrollY + window.innerHeight * 0.5;
+    var active = sections[0];
+    for(var i=0;i<sections.length;i++){
+      var r = sections[i].getBoundingClientRect();
+      var top = r.top + scrollY;
+      var bottom = top + r.height;
+      if(centerY >= top && centerY <= bottom){ active = sections[i]; break; }
+    }
+    var min = parseFloat(active.getAttribute('data-depth-min'));
+    var max = parseFloat(active.getAttribute('data-depth-max'));
+    var r2 = active.getBoundingClientRect();
+    var top2 = r2.top + scrollY;
+    var progress = Math.min(1, Math.max(0, (centerY - top2) / r2.height));
+    var depth = Math.round(min + (max - min) * progress);
+    hudDepth.textContent = depth.toLocaleString() + ' m';
+
+    var zoneNames = {
+      'zone--hero':'Sunlight Zone','zone--twilight':'Twilight Zone',
+      'zone--midnight':'Midnight Zone','zone--abyss':'Abyssal Zone','zone--hadal':'Hadal Zone'
+    };
+    var cls = Array.prototype.find ? active.classList.value.split(' ').find(function(c){return zoneNames[c];}) : null;
+    if(!cls){
+      active.classList.forEach(function(c){ if(zoneNames[c]) cls=c; });
+    }
+    hudZone.textContent = cls ? zoneNames[cls] : '';
+
+    var overall = docHeight > 0 ? scrollY / docHeight : 0;
+    hudMarker.style.top = (overall * railHeight) + 'px';
+
+    if(scrollY > window.innerHeight * 0.6){ resurfaceBtn.classList.add('is-visible'); }
+    else{ resurfaceBtn.classList.remove('is-visible'); }
+  }
+
+  var ticking = false;
+  function onScroll(){
+    if(!ticking){
+      window.requestAnimationFrame(function(){ update(); ticking=false; });
+      ticking = true;
+    }
+  }
+  window.addEventListener('scroll', onScroll, { passive:true });
+  window.addEventListener('resize', function(){
+    docHeight = document.documentElement.scrollHeight - window.innerHeight;
+    railHeight = document.querySelector('.hud__rail').offsetHeight;
+    update();
+  });
+  update();
+})();
+</script>
+
+</body>
+</html>
